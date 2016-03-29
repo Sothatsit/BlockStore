@@ -1,0 +1,13 @@
+main: net.sothatsit.blockstore.BlockStore
+author: sothatsit
+name: BlockStore
+version: 1.11
+soft-depend: [WorldEdit]
+commands:
+   blockstore:
+      description: 'BlockStore main command'
+permissions:
+   blockstore.check:
+      description: 'Check whether a block is placed'
+   blockstore.info:
+      description: 'Info on the loaded chunk stores'
