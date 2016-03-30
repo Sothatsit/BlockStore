@@ -1,28 +1,16 @@
 package net.sothatsit.blockstore.chunkstore;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import net.sothatsit.blockstore.BlockStore;
+import net.sothatsit.blockstore.util.NameStore;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import net.sothatsit.blockstore.BlockStore;
-import net.sothatsit.blockstore.util.NameStore;
+import java.io.*;
+import java.util.*;
 
 public class ChunkManager {
-    
-    public static final String FILE_EXTENSION = "dat";
+
     public static final long CHUNK_UNLOAD_TIMER = 60000;
     
     private World world;
@@ -35,7 +23,7 @@ public class ChunkManager {
         }
         
         this.world = world;
-        this.storeMap = new HashMap<String, ChunkStore>();
+        this.storeMap = new HashMap<>();
         
         loadNames();
         
@@ -43,7 +31,7 @@ public class ChunkManager {
             @Override
             public void run() {
                 final Collection<ChunkStore> collection = storeMap.values();
-                final List<ChunkStore> list = new ArrayList<ChunkStore>();
+                final List<ChunkStore> list = new ArrayList<>();
                 
                 for (ChunkStore store : collection) {
                     if (store.isChunkLoaded()) {

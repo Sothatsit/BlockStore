@@ -1,19 +1,14 @@
 package net.sothatsit.blockstore.chunkstore;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
+import net.sothatsit.blockstore.util.NumberUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 
-import net.sothatsit.blockstore.util.NumberUtils;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.*;
 
 public class ChunkStore {
     
@@ -91,10 +86,10 @@ public class ChunkStore {
     
     public boolean isTrue(int x, int y, int z) {
         this.lastUse = System.currentTimeMillis();
-        x = x % 16;
-        y = y % 64;
-        z = z % 16;
-        return store[x][y][z];
+
+        int[] coords = NumberUtils.getChunkRelCoords(x, y, z);
+
+        return store[coords[0]][coords[1]][coords[2]];
     }
     
     public void setTrue(Location loc, boolean value) {
@@ -103,15 +98,14 @@ public class ChunkStore {
     
     public void setTrue(int x, int y, int z, boolean value) {
         this.lastUse = System.currentTimeMillis();
-        x = x % 16;
-        y = y % 64;
-        z = z % 16;
-        
-        store[x][y][z] = value;
+
+        int[] coords = NumberUtils.getChunkRelCoords(x, y, z);
+
+        store[coords[0]][coords[1]][coords[2]] = value;
         dirty = true;
         
         if (!value) {
-            metadata.remove(NumberUtils.packLoc(x, y, z));
+            metadata.remove(NumberUtils.packLoc(coords[0], coords[1], coords[2]));
         }
     }
     
