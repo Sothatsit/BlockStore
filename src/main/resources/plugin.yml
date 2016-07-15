@@ -1,7 +1,7 @@
 main: net.sothatsit.blockstore.BlockStore
 author: sothatsit
 name: BlockStore
-version: 1.12
+version: 1.13
 soft-depend: [WorldEdit]
 commands:
    blockstore:

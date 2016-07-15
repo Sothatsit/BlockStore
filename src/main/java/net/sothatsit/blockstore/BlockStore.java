@@ -80,25 +80,25 @@ public class BlockStore extends JavaPlugin implements Listener {
         return managers;
     }
     
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockGrow(BlockGrowEvent e) {
         setPlaced(e.getBlock().getLocation(), false);
     }
     
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent e) {
         setPlaced(e.getBlock().getLocation(), false);
     }
     
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent e) {
         setPlaced(e.getBlock().getLocation(), true);
     }
     
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockPistonExtend(BlockPistonExtendEvent e) {
-        List<Block> setTrue = new ArrayList<Block>();
-        List<Block> setFalse = new ArrayList<Block>();
+        List<Block> setTrue = new ArrayList<>();
+        List<Block> setFalse = new ArrayList<>();
         
         for (Block b : e.getBlocks()) {
             setFalse.add(b);
@@ -121,7 +121,7 @@ public class BlockStore extends JavaPlugin implements Listener {
     }
     
     @SuppressWarnings("deprecation")
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockPistonRetract(BlockPistonRetractEvent e) {
         if (e.getRetractLocation() == null || e.getBlock().getType() != Material.PISTON_STICKY_BASE) {
             return;
