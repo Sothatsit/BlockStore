@@ -9,13 +9,17 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 public class BlockMeta {
-    
-    private int loc;
+
+    private int blockIndex;
     private Map<Integer, Map<Integer, Object>> metadata;
     
-    public BlockMeta(int loc) {
-        this.loc = loc;
+    public BlockMeta(int blockIndex) {
+        this.blockIndex = blockIndex;
         this.metadata = new HashMap<>();
+    }
+
+    public int getBlockIndex() {
+        return blockIndex;
     }
     
     private Map<Integer, Object> getMap(int plugin) {
@@ -42,8 +46,7 @@ public class BlockMeta {
     
     public void write(ObjectOutputStream stream, int plugin) throws IOException {
         Map<Integer, Object> map = getMap(plugin);
-        
-        stream.writeInt(loc);
+
         stream.writeInt(map.size());
         
         for (Entry<Integer, Object> entry : map.entrySet()) {

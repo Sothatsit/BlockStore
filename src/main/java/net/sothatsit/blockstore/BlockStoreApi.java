@@ -3,20 +3,15 @@ package net.sothatsit.blockstore;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.plugin.Plugin;
 
 import net.sothatsit.blockstore.chunkstore.BlockMeta;
 import net.sothatsit.blockstore.chunkstore.ChunkManager;
-import net.sothatsit.blockstore.util.NameStore;
+import net.sothatsit.blockstore.chunkstore.NameStore;
 
 public class BlockStoreApi {
-    
-    public static boolean isAvailable() {
-        return Bukkit.getPluginManager().getPlugin("BlockStore") != null;
-    }
     
     public static boolean isPlaced(Block block) {
         return isPlaced(block.getLocation());
@@ -84,20 +79,17 @@ public class BlockStoreApi {
     }
     
     public static void setBlockMeta(Location loc, Plugin plugin, String key, Object value) {
-        if (value == null) {
+        if (value == null)
             throw new IllegalArgumentException("'value' cannot be null");
+
+        Class<?> baseType = value.getClass();
+        
+        while (baseType.isArray()) {
+            baseType = baseType.getComponentType();
         }
         
-        Class<?> clazz = value.getClass();
-        Class<?> sub = clazz;
-        
-        while (sub.isArray()) {
-            sub = sub.getComponentType();
-        }
-        
-        if (!classWhitelist.contains(sub)) {
+        if (!classWhitelist.contains(baseType))
             throw new IllegalArgumentException("'value' must be a value or array of type String, byte, short, int, long, float or double");
-        }
         
         ChunkManager manager = BlockStore.getChunkManager(loc);
         

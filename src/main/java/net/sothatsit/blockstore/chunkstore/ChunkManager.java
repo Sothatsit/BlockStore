@@ -1,77 +1,62 @@
 package net.sothatsit.blockstore.chunkstore;
 
 import net.sothatsit.blockstore.BlockStore;
-import net.sothatsit.blockstore.util.NameStore;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.*;
 
 public class ChunkManager {
 
     public static final long CHUNK_UNLOAD_TIMER = 60000;
     
-    private World world;
-    private Map<String, ChunkStore> storeMap;
-    private NameStore nameStore;
+    private final World world;
+    private final Map<ChunkLoc, ChunkStore> storeMap;
+    private final NameStore nameStore;
     
     public ChunkManager(World world) {
-        if (world == null) {
+        if (world == null)
             throw new IllegalArgumentException("world cannot be null");
-        }
         
         this.world = world;
-        this.storeMap = new HashMap<>();
-        
-        loadNames();
-        
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                final Collection<ChunkStore> collection = storeMap.values();
-                final List<ChunkStore> list = new ArrayList<>();
-                
-                for (ChunkStore store : collection) {
-                    if (store.isChunkLoaded()) {
-                        list.add(store);
-                    }
-                }
-                
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        for (ChunkStore store : list) {
-                            if (System.currentTimeMillis() - store.getLastUse() >= CHUNK_UNLOAD_TIMER) {
-                                unloadStore(store);
-                            }
-                        }
-                    }
-                }.runTaskAsynchronously(BlockStore.getInstance());
-            }
-        }.runTaskTimer(BlockStore.getInstance(), 100, 100);
-    }
-    
-    public void loadNames() {
+        this.storeMap = new ConcurrentHashMap<>();
+
         this.nameStore = new NameStore();
-        
-        File namesFile = new File(getStoreFolder(), "names.dat");
-        
-        if (namesFile.exists()) {
-            try {
-                FileInputStream fileStream = new FileInputStream(namesFile);
-                ObjectInputStream stream = new ObjectInputStream(fileStream);
-                
-                nameStore.read(stream);
-            } catch (IOException e) {
-                e.printStackTrace();
+        {
+            File namesFile = getNamesFile();
+
+            if (namesFile.exists()) {
+                try {
+                    FileInputStream fileStream = new FileInputStream(namesFile);
+                    ObjectInputStream stream = new ObjectInputStream(fileStream);
+
+                    nameStore.read(stream);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
+
+        Bukkit.getScheduler().runTaskTimer(BlockStore.getInstance(), () -> {
+            storeMap.values().stream()
+                    .filter(store -> !store.isChunkLoaded())
+                    .filter(store -> store.getTimeSinceUse() >= CHUNK_UNLOAD_TIMER)
+                    .forEach(store -> Bukkit.getScheduler().runTaskAsynchronously(BlockStore.getInstance(), () -> {
+                        unloadStore(store);
+                    }));
+        }, 100, 100);
     }
-    
+
+    public File getNamesFile() {
+        return new File(getStoreFolder(), "names.dat");
+    }
+
     public void saveNames() {
-        File namesFile = new File(getStoreFolder(), "names.dat");
+        File namesFile = getNamesFile();
         
         if (!namesFile.exists()) {
             try {
@@ -102,7 +87,7 @@ public class ChunkManager {
         return world;
     }
     
-    public Map<String, ChunkStore> getChunkStores() {
+    public Map<ChunkLoc, ChunkStore> getChunkStores() {
         return storeMap;
     }
     
@@ -125,31 +110,31 @@ public class ChunkManager {
         
         return f;
     }
-    
-    public File getStoreFile(int cx, int cz, int cy) {
-        return new File(getChunkXFolder(cx), "z" + cz + "_y" + cy);
+
+    public File getLegacyStoreFile(ChunkLoc chunkLoc) {
+        return new File(getChunkXFolder(chunkLoc.x), "z" + chunkLoc.z + "_y" + chunkLoc.y);
     }
     
-    public ChunkStore getChunkStoreByChunk(int cx, int cz, int cy, boolean load) {
-        String id = cx + "_" + cz + "_" + cy;
-        
-        ChunkStore store = storeMap.get(id);
-        
-        if (store != null || !load) {
-            return store;
-        }
-        
-        store = loadStore(cx, cz, cy);
-        
-        if (store != null) {
-            return store;
-        }
-        
-        store = new ChunkStore(world, cx, cz, cy);
-        
-        storeMap.put(id, store);
-        
-        return store;
+    public File getStoreFile(ChunkLoc chunkLoc) {
+        return new File(getChunkXFolder(chunkLoc.x), "z" + chunkLoc.z + "_y" + chunkLoc.y + ".data");
+    }
+
+    public boolean isChunkStoreLoaded(ChunkLoc chunkLoc) {
+        return storeMap.containsKey(chunkLoc);
+    }
+
+    public ChunkStore getChunkStoreByChunk(ChunkLoc chunkLoc, boolean load) {
+        return storeMap.computeIfAbsent(chunkLoc, (key) -> {
+            if(!load)
+                return null;
+
+            ChunkStore store = loadStore(chunkLoc);
+
+            if (store != null)
+                return store;
+
+            return new ChunkStore(world, chunkLoc);
+        });
     }
     
     public ChunkStore getChunkStore(Location location) {
@@ -157,63 +142,70 @@ public class ChunkManager {
     }
     
     public ChunkStore getChunkStore(int x, int y, int z) {
-        int[] chunk = toChunkCoordinates(x, y, z);
-        return getChunkStoreByChunk(chunk[0], chunk[1], chunk[2], true);
+        return getChunkStoreByChunk(ChunkLoc.fromLocation(x, y, z), true);
     }
     
-    public ChunkStore loadStore(int cx, int cz, int cy) {
-        File file = getStoreFile(cx, cz, cy);
+    public ChunkStore loadStore(ChunkLoc chunkLoc) {
+        ChunkStore loadedStore = getChunkStoreByChunk(chunkLoc, false);
+
+        if(loadedStore != null)
+            return loadedStore;
+
+        File legacyFile = getLegacyStoreFile(chunkLoc);
+        File file = getStoreFile(chunkLoc);
         
-        if (!file.exists()) {
+        if (!legacyFile.exists() && !file.exists())
             return null;
-        }
         
         try {
-            FileInputStream fileStream = new FileInputStream(file);
-            ObjectInputStream stream = new ObjectInputStream(fileStream);
-            
-            final ChunkStore store = ChunkStore.read(stream);
-            
-            if (store == null) {
-                return null;
+            ObjectInputStream stream;
+            int version;
+
+            if(file.exists()) {
+                FileInputStream fileStream = new FileInputStream(file);
+                GZIPInputStream zipStream = new GZIPInputStream(fileStream);
+                stream = new ObjectInputStream(zipStream);
+                version = stream.readInt();
+            } else {
+                FileInputStream fileStream = new FileInputStream(legacyFile);
+                stream = new ObjectInputStream(fileStream);
+                version = 1;
             }
             
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    storeMap.put(store.getID(), store);
-                }
-            }.runTask(BlockStore.getInstance());
+            ChunkStore store = ChunkStore.read(stream, version);
             
+            if (store == null)
+                return null;
+
+            Bukkit.getScheduler().runTask(BlockStore.getInstance(), () -> storeMap.put(chunkLoc, store));
+
             stream.close();
             
             return store;
-        } catch (FileNotFoundException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+
+            BlockStore.getInstance().getLogger().severe("Possibly corrupted BlockStore file " + file);
+
+            return null;
         }
-        
-        return null;
     }
     
     public void unloadStore(ChunkStore store) {
-        if (store == null) {
+        if (store == null)
             return;
-        }
+
+        ChunkLoc chunkLoc = store.getChunkLoc();
         
-        storeMap.remove(store.getID());
+        storeMap.remove(chunkLoc);
         
-        if (!store.isDirty()) {
+        if (!store.isDirty())
             return;
-        }
         
         boolean empty = store.isEmpty();
-        
-        int[] coords = store.getChunkCoords();
-        File file = getStoreFile(coords[0], coords[1], coords[2]);
+
+        File file = getStoreFile(chunkLoc);
+        File legacyFile = getLegacyStoreFile(chunkLoc);
         
         if (!file.exists() && !empty) {
             try {
@@ -227,29 +219,25 @@ public class ChunkManager {
         
         try {
             FileOutputStream fileStream = new FileOutputStream(file);
-            ObjectOutputStream stream = new ObjectOutputStream(fileStream);
-            
+            GZIPOutputStream zipStream = new GZIPOutputStream(fileStream);
+            ObjectOutputStream stream = new ObjectOutputStream(zipStream);
+
+            stream.writeInt(2);
             store.write(stream);
             
             stream.flush();
             stream.close();
+
+            if(legacyFile.exists()) {
+                legacyFile.delete();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     
     public void saveAll() {
-        for (ChunkStore store : storeMap.values().toArray(new ChunkStore[0])) {
-            unloadStore(store);
-        }
-    }
-    
-    public static int[] toChunkCoordinates(int x, int y, int z) {
-        int cx = (int) Math.floor(x / 16d);
-        int cz = (int) Math.floor(z / 16d);
-        int cy = (int) Math.floor(y / 64d);
-        
-        return new int[] { cx, cz, cy };
+        storeMap.values().forEach(this::unloadStore);
     }
     
 }

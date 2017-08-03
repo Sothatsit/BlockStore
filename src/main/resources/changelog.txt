@@ -1,0 +1,9 @@
+Version 1.3
+* Improve efficiency
+* Improve concurrency
+* Cleanup internals
+
+Version 1.2
+* Compress data files as zips
+* Store placed blocks in a bit set for reduced file size
+- Removed API method isAvailable()
