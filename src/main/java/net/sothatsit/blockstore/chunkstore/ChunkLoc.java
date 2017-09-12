@@ -27,6 +27,10 @@ public final class ChunkLoc {
         return z * 16;
     }
 
+    public boolean exists(World world) {
+        return y >= 0 && y * 64 < world.getMaxHeight();
+    }
+
     @Override
     public int hashCode() {
         return Integer.hashCode(x) ^ Integer.hashCode(y) ^ Integer.hashCode(z);
@@ -34,7 +38,7 @@ public final class ChunkLoc {
 
     @Override
     public boolean equals(Object obj) {
-        if(obj == null || !(obj instanceof ChunkLoc))
+        if(!(obj instanceof ChunkLoc))
             return false;
 
         ChunkLoc other = (ChunkLoc) obj;
@@ -57,49 +61,6 @@ public final class ChunkLoc {
         int cz = (int) Math.floor(z / 16d);
 
         return new ChunkLoc(cx, cy, cz);
-    }
-
-    private static int positiveRemainder(int num, int divisor) {
-        int remainder = num % divisor;
-        return (remainder < 0 ? remainder + divisor : remainder);
-    }
-
-    public static int[] getChunkRelCoords(int x, int y, int z) {
-        return new int[] {
-                positiveRemainder(x, 16),
-                positiveRemainder(y, 64),
-                positiveRemainder(z, 16)
-        };
-    }
-
-    public static int getChunkBlockIndex(Location location) {
-        return getChunkBlockIndex(location.getBlockX(), location.getBlockY(), location.getBlockZ());
-    }
-
-    public static int getChunkBlockIndex(int x, int y, int z) {
-        x = positiveRemainder(x, 16);
-        y = positiveRemainder(y, 64);
-        z = positiveRemainder(z, 16);
-
-        return x + (16 * z) + (16 * 16 * y);
-    }
-
-    public static int[] getLocFromChunkBlockIndex(int blockIndex) {
-        int x = blockIndex % 16;
-        int z = (blockIndex % (16 * 16)) / 16;
-        int y = blockIndex / (16 * 16);
-
-        return new int[] {x, y, z};
-    }
-
-    public static Location getLocFromChunkBlockIndex(World world, ChunkLoc chunkLoc, int blockIndex) {
-        int[] loc = getLocFromChunkBlockIndex(blockIndex);
-
-        int x = chunkLoc.getBlockX() + loc[0];
-        int y = chunkLoc.getBlockY() + loc[1];
-        int z = chunkLoc.getBlockZ() + loc[2];
-
-        return new Location(world, x, y, z);
     }
 
 }

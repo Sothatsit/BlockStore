@@ -2,52 +2,57 @@ package net.sothatsit.blockstore;
 
 import net.sothatsit.blockstore.chunkstore.ChunkLoc;
 import net.sothatsit.blockstore.chunkstore.ChunkManager;
-import net.sothatsit.blockstore.worldedit.WorldEditHook;
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 public class BlockStore extends JavaPlugin implements Listener {
     
     private static BlockStore instance;
-    private Map<String, ChunkManager> managers;
-    
+    private final Map<String, ChunkManager> managers = new ConcurrentHashMap<>();
+    private final BlockStoreConfig blockStoreConfig = new BlockStoreConfig();
+
     @Override
     public void onEnable() {
         instance = this;
-        managers = new ConcurrentHashMap<>();
-        
+
+        blockStoreConfig.reload();
+
         Bukkit.getPluginManager().registerEvents(this, this);
         
         getCommand("blockstore").setExecutor(new BlockStoreCommand());
         
         if (Bukkit.getPluginManager().getPlugin("WorldEdit") != null) {
-            getLogger().info("Attempting to hook WorldEdit...");
+            Logger logger = getLogger();
             
             try {
                 WorldEditHook hook = new WorldEditHook();
 
                 hook.register();
 
-                getLogger().info("Hooked WorldEdit.");
+                logger.info("Hooked WorldEdit.");
             } catch (Throwable e) {
-                getLogger().severe("");
-                getLogger().severe("     [!] Hooking WorldEdit has Failed [!] ");
-                getLogger().severe("An error has been thrown hooking WorldEdit. This is");
-                getLogger().severe("likely due to an outdated WorldEdit plugin. If you");
-                getLogger().severe("wish for WorldEdit to clear the placed block stores");
-                getLogger().severe("then please update WorldEdit to the latest version.");
-                getLogger().severe("");
+                logger.severe("");
+                logger.severe("     [!] Hooking WorldEdit has Failed [!] ");
+                logger.severe("An error has been thrown hooking WorldEdit. This is");
+                logger.severe("likely due to an outdated WorldEdit plugin. If you");
+                logger.severe("wish for WorldEdit to clear the placed block stores");
+                logger.severe("then please update WorldEdit to the latest version.");
+                logger.severe("");
                 e.printStackTrace();
             }
         }
@@ -59,12 +64,22 @@ public class BlockStore extends JavaPlugin implements Listener {
             manager.saveAll();
             manager.saveNames();
         }
+
+        instance = null;
+    }
+
+    public BlockStoreConfig getBlockStoreConfig() {
+        return blockStoreConfig;
     }
     
     public ChunkManager getManager(String world) {
         return managers.get(world);
     }
-    
+
+    public ChunkManager getManager(Location location) {
+        return getManager(location.getWorld());
+    }
+
     public ChunkManager getManager(World world) {
         return managers.computeIfAbsent(world.getName(), key -> new ChunkManager(world));
     }
@@ -74,88 +89,131 @@ public class BlockStore extends JavaPlugin implements Listener {
     }
     
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockGrow(BlockGrowEvent e) {
-        setPlaced(e.getBlock().getLocation(), false);
+    public void onBlockGrow(BlockGrowEvent event) {
+        BlockStoreApi.setPlaced(event.getBlock(), false);
     }
     
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent e) {
-        setPlaced(e.getBlock().getLocation(), false);
+    public void onBlockBreak(BlockBreakEvent event) {
+        BlockStoreApi.setPlaced(event.getBlock(), false);
     }
     
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockPlace(BlockPlaceEvent e) {
-        setPlaced(e.getBlock().getLocation(), true);
+    public void onBlockPlace(BlockPlaceEvent event) {
+        BlockStoreApi.setPlaced(event.getBlock(), true);
     }
-    
+
+    private static final BlockFace[] PISTON_BLOCK_FACES_BY_DATA = {
+            BlockFace.DOWN,
+            BlockFace.UP,
+            BlockFace.NORTH,
+            BlockFace.SOUTH,
+            BlockFace.WEST,
+            BlockFace.EAST,
+            BlockFace.SELF,
+            BlockFace.SELF,
+    };
+
+    private BlockFace getPistonDirection(Block block) {
+        @SuppressWarnings("deprecation")
+        int direction = block.getData() & (0b111);
+
+        return PISTON_BLOCK_FACES_BY_DATA[direction];
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockPistonExtend(BlockPistonExtendEvent e) {
-        List<Block> setTrue = new ArrayList<>();
-        List<Block> setFalse = new ArrayList<>();
-        
-        for (Block b : e.getBlocks()) {
-            setFalse.add(b);
-            setTrue.add(b.getRelative(e.getDirection()));
-        }
-        
-        for (Block b : setFalse) {
-            if (setTrue.contains(b))
-                continue;
-            
-            setPlaced(b.getLocation(), false);
-        }
-        
-        for (Block b : setTrue) {
-            setPlaced(b.getLocation(), true);
-        }
-        
-        setPlaced(e.getBlock().getRelative(e.getDirection()).getLocation(), true);
+    public void onBlockPistonExtend(BlockPistonExtendEvent event) {
+        BlockFace direction = getPistonDirection(event.getBlock());
+
+        Map<World, Set<Block>> byWorld = new HashMap<>();
+
+        event.getBlocks().forEach(block -> {
+            Set<Block> blockSet = byWorld.computeIfAbsent(block.getWorld(), world -> new HashSet<>());
+
+            blockSet.add(block);
+        });
+
+        byWorld.forEach((world, blocks) -> {
+            ChunkManager manager = getManager(world);
+
+            manager.moveBlocks(blocks, direction);
+        });
+
+        Block pistonArm = event.getBlock().getRelative(direction);
+        boolean pistonPlaced = BlockStoreApi.isPlaced(event.getBlock());
+
+        BlockStoreApi.setPlaced(pistonArm, pistonPlaced);
     }
     
     @SuppressWarnings("deprecation")
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockPistonRetract(BlockPistonRetractEvent e) {
-        if (e.getRetractLocation() == null || e.getBlock().getType() != Material.PISTON_STICKY_BASE)
+    public void onBlockPistonRetract(BlockPistonRetractEvent event) {
+        BlockFace direction = getPistonDirection(event.getBlock());
+
+        if (!event.isSticky() || event.getBlocks().size() == 0) {
+            Block pistonArm = event.getBlock().getRelative(direction);
+
+            BlockStoreApi.setPlaced(pistonArm, false);
             return;
-        
-        setPlaced(e.getRetractLocation(), false);
+        }
+
+        Map<World, Set<Block>> byWorld = new HashMap<>();
+
+        event.getBlocks().forEach(block -> {
+            Set<Block> blockSet = byWorld.computeIfAbsent(block.getWorld(), world -> new HashSet<>());
+
+            blockSet.add(block);
+        });
+
+        byWorld.forEach((world, blocks) -> {
+            ChunkManager manager = getManager(world);
+
+            manager.moveBlocks(blocks, direction.getOppositeFace());
+        });
     }
     
     @EventHandler
-    public void onChunkLoad(final ChunkLoadEvent e) {
-        Bukkit.getScheduler().runTaskLater(this, () -> {
-            Chunk chunk = e.getChunk();
-            ChunkManager manager = getManager(chunk.getWorld());
+    public void onChunkLoad(final ChunkLoadEvent event) {
+        if(blockStoreConfig.getPreloadStrategy() == PreloadStrategy.ALL) {
+            getManager(event.getWorld()).preloadChunk(event.getChunk());
+        }
+    }
 
-            for (int i = 0; i < e.getWorld().getMaxHeight(); i += 64) {
-                ChunkLoc chunkLoc = new ChunkLoc(chunk.getX(), i / 64, chunk.getZ());
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        if(blockStoreConfig.getPreloadStrategy() == PreloadStrategy.CLOSE) {
+            ChunkLoc before = ChunkLoc.fromLocation(event.getFrom());
+            ChunkLoc after = ChunkLoc.fromLocation(event.getTo());
 
-                if(manager.isChunkStoreLoaded(chunkLoc))
-                    continue;
-
-                Bukkit.getScheduler().runTaskAsynchronously(this, () -> manager.loadStore(chunkLoc));
+            if(!before.equals(after)) {
+                getManager(event.getTo().getWorld()).preloadStoresAround(after);
             }
-        }, 1);
+        }
     }
-    
-    public static boolean isPlaced(Location loc) {
-        ChunkManager manager = getChunkManager(loc);
 
-        return manager.getChunkStore(loc).getValue(loc);
-    }
-    
-    public static void setPlaced(Location loc, boolean value) {
-        ChunkManager manager = getChunkManager(loc);
+    @EventHandler
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        if(blockStoreConfig.getPreloadStrategy() == PreloadStrategy.CLOSE) {
+            ChunkLoc before = ChunkLoc.fromLocation(event.getFrom());
+            ChunkLoc after = ChunkLoc.fromLocation(event.getTo());
 
-        manager.getChunkStore(loc).setValue(loc, value);
+            if(!before.equals(after)) {
+                getManager(event.getTo().getWorld()).preloadStoresAround(after);
+            }
+        }
     }
-    
-    public static ChunkManager getChunkManager(Location loc) {
-        return instance.getManager(loc.getWorld());
-    }
-    
-    public static ChunkManager getChunkManager(World world) {
-        return instance.getManager(world);
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        if(blockStoreConfig.getPreloadStrategy() == PreloadStrategy.CLOSE) {
+            Player player = event.getPlayer();
+
+            ChunkLoc chunkLoc = ChunkLoc.fromLocation(player.getLocation());
+
+            ChunkManager manager = getManager(player.getWorld());
+
+            manager.preloadStoresAround(chunkLoc);
+        }
     }
     
     public static BlockStore getInstance() {

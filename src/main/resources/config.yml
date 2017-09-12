@@ -1,0 +1,7 @@
+# All - If a chunk is loaded in game, it will be preloaded by BlockStore
+# Close - If a chunk is next to a player in the game, it will be preloaded by BlockStore
+# None - No chunks will be preloaded by BlockStore, chunks will be loaded as they are used
+preload: 'Close'
+
+# The time in seconds to wait after a chunk store is used to unload it
+unload-time: 60

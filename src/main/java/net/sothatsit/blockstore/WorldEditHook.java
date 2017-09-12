@@ -1,4 +1,4 @@
-package net.sothatsit.blockstore.worldedit;
+package net.sothatsit.blockstore;
 
 import com.sk89q.worldedit.Vector;
 import com.sk89q.worldedit.WorldEdit;
@@ -8,7 +8,7 @@ import com.sk89q.worldedit.extent.logging.AbstractLoggingExtent;
 import com.sk89q.worldedit.util.eventbus.Subscribe;
 
 import com.sk89q.worldedit.world.World;
-import net.sothatsit.blockstore.BlockStore;
+import net.sothatsit.blockstore.chunkstore.BlockLoc;
 import net.sothatsit.blockstore.chunkstore.ChunkManager;
 import net.sothatsit.blockstore.chunkstore.ChunkStore;
 
@@ -30,9 +30,11 @@ public class WorldEditHook {
         event.setExtent(new AbstractLoggingExtent(event.getExtent()) {
             @Override
             protected void onBlockChange(Vector pos, BaseBlock newBlock) {
-                ChunkStore store = manager.getChunkStore(pos.getBlockX(), pos.getBlockY(), pos.getBlockZ());
+                BlockLoc blockLoc = BlockLoc.fromLocation(pos.getX(), pos.getY(), pos.getZ());
 
-                store.setValue(pos.getBlockX(), pos.getBlockY(), pos.getBlockZ(), false);
+                ChunkStore store = manager.getChunkStore(blockLoc.chunkLoc, true);
+
+                store.setPlaced(blockLoc, false);
             }
         });
     }

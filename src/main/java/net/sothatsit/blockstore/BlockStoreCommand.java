@@ -4,7 +4,9 @@ import java.lang.reflect.Array;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
+import net.sothatsit.blockstore.chunkstore.*;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -13,91 +15,148 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import net.sothatsit.blockstore.chunkstore.BlockMeta;
-import net.sothatsit.blockstore.chunkstore.ChunkManager;
-import net.sothatsit.blockstore.chunkstore.ChunkStore;
-import net.sothatsit.blockstore.chunkstore.NameStore;
-
 public class BlockStoreCommand implements CommandExecutor {
-    
+
+    private static final Set<Material> transparentBlocks = new HashSet<Material>() {{
+        add(Material.AIR);
+    }};
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String labels, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(translate("&4Invalid Arguments > &c/blockstore <check:info>"));
+            sender.sendMessage(colour("&4Invalid Arguments > &c/blockstore <check:info:reload>"));
             return true;
         }
 
         if (args[0].equalsIgnoreCase("check")) {
             if (!sender.isOp() && !sender.hasPermission("blockstore.check")) {
-                sender.sendMessage(translate("&4Error > &cYou do not have permission to run this command"));
+                sender.sendMessage(colour("&4Error > &cYou do not have permission to run this command"));
                 return true;
             }
 
             if (!(sender instanceof Player)) {
-                sender.sendMessage(translate("&4Error > &cYou must be a player to run this command"));
+                sender.sendMessage(colour("&4Error > &cYou must be a player to run this command"));
                 return true;
             }
 
-            Player p = (Player) sender;
+            Player player = (Player) sender;
 
-            HashSet<Material> transparentBlocks = new HashSet<>();
+            Block block;
 
-            transparentBlocks.add(Material.AIR);
+            if(args.length == 1) {
+                block = player.getTargetBlock(transparentBlocks, 80);
 
-            Block target = p.getTargetBlock(transparentBlocks, 80);
+                if (block == null || block.getType() == Material.AIR) {
+                    sender.sendMessage(colour("&4Error > &cYou must be looking at a block within 80 blocks of you"));
+                    return true;
+                }
+            } else if(args.length > 2) {
+                sender.sendMessage(colour("&4Invalid Arguments > &c/blockstore check [feet:head]"));
+                return true;
+            } else if(args[1].equalsIgnoreCase("feet")) {
+                block = player.getLocation().getBlock();
 
-            if (target == null) {
-                sender.sendMessage(translate("&4Error > &cYou must be looking at a block within 80 blocks of you"));
+                if (block == null) {
+                    sender.sendMessage(colour("&4Error > &cYou must be standing in a block"));
+                    return true;
+                }
+            } else if(args[1].equalsIgnoreCase("head")) {
+                block = player.getEyeLocation().getBlock();
+
+                if (block == null) {
+                    sender.sendMessage(colour("&4Error > &cYour head must be in a block"));
+                    return true;
+                }
+            } else {
+                sender.sendMessage(colour("&4Invalid Arguments > &c/blockstore check [feet:head]"));
                 return true;
             }
 
-            ChunkManager manager = BlockStore.getChunkManager(target.getLocation());
+            BlockStoreApi.retrieveIsPlaced(block, isPlaced -> {
+                sender.sendMessage(colour("&7Your target block is " + (isPlaced ? "&aPlaced" : "&cNatural")));
 
-            NameStore names = manager.getNameStore();
-            ChunkStore store = manager.getChunkStore(target.getLocation());
+                Map<String, Map<String, Object>> metadata = BlockStoreApi.getAllBlockMeta(block);
 
-            boolean blockValue = store.getValue(target.getLocation());
-            sender.sendMessage(translate("&7Your target block is " + (blockValue ? "&aPlaced" : "&cNatural")));
+                if(metadata.size() == 0)
+                    return;
 
-            BlockMeta meta = store.getMeta(target.getLocation());
+                sender.sendMessage(colour("&6Metadata&8:"));
 
-            if (meta.getKeys().size() != 0) {
-                sender.sendMessage(translate("&6Metadata&8:"));
+                for (Entry<String, Map<String, Object>> pluginMeta : metadata.entrySet()) {
+                    String plugin = pluginMeta.getKey();
 
-                for (Entry<Integer, Map<Integer, Object>> pluginMeta : meta.getRaw().entrySet()) {
-                    sender.sendMessage(translate("  &6" + names.fromInt(pluginMeta.getKey()) + "&8:"));
+                    sender.sendMessage(colour("  &6") + plugin + colour("&8:"));
 
-                    for (Entry<Integer, Object> entry : pluginMeta.getValue().entrySet()) {
-                        sender.sendMessage(translate("    &e" + names.fromInt(entry.getKey()) + "&8: &7" + toString(entry.getValue())));
+                    for (Entry<String, Object> metaValue : pluginMeta.getValue().entrySet()) {
+                        String key = metaValue.getKey();
+                        String value = toString(metaValue.getValue());
+
+                        sender.sendMessage(colour("    &e") + key + colour("&8: &7") + value);
                     }
                 }
-            }
+            });
             return true;
         }
 
         if (args[0].equalsIgnoreCase("info")) {
             if (!sender.isOp() && !sender.hasPermission("blockstore.info")) {
-                sender.sendMessage(translate("&4Error > &cYou do not have permission to run this command"));
+                sender.sendMessage(colour("&4Error > &cYou do not have permission to run this command"));
                 return true;
             }
 
-            sender.sendMessage(translate("&6BlockStore World Info&8:"));
+            sender.sendMessage(colour("&6BlockStore World Info&8:"));
 
             for (ChunkManager manager : BlockStore.getInstance().getChunkManagers().values()) {
                 String name = manager.getWorld().getName();
                 int stores = manager.getChunkStores().size();
                 int chunks = manager.getWorld().getLoadedChunks().length;
-                sender.sendMessage(translate("   &e" + name + ": &f" + stores + " stores loaded (" + chunks + " chunks)"));
+                sender.sendMessage(colour("   &e" + name + ": &f" + stores + " stores loaded (" + chunks + " chunks loaded)"));
             }
 
             return true;
         }
 
-        sender.sendMessage(translate("&4Invalid Arguments > &c/blockstore <check:info>"));
+        if(args[0].equalsIgnoreCase("reload")) {
+            if (!sender.isOp() && !sender.hasPermission("blockstore.reload")) {
+                sender.sendMessage(colour("&4Error > &cYou do not have permission to run this command"));
+                return true;
+            }
+
+            BlockStoreConfig config = BlockStore.getInstance().getBlockStoreConfig();
+
+            config.reload();
+
+            sender.sendMessage(colour("&7Config reloaded."));
+            return true;
+        }
+
+        // Used to add test metadata on to arbitrary blocks
+        /*if(args[0].equalsIgnoreCase("test")) {
+            sender.sendMessage(colour("&cThis command should not be available in a release version."));
+
+            Player player = (Player) sender;
+            Block block = player.getTargetBlock(transparentBlocks, 80);
+
+            if (block == null || block.getType() == Material.AIR) {
+                sender.sendMessage(colour("&4Error > &cYou must be looking at a block within 80 blocks of you"));
+                return true;
+            }
+
+            BlockStore plugin = BlockStore.getInstance();
+
+            BlockStoreApi.setPlaced(block, true);
+            BlockStoreApi.setBlockMeta(block, plugin, "apple", true);
+            BlockStoreApi.setBlockMeta(block, plugin, "number", Math.random());
+            BlockStoreApi.setBlockMeta(block, plugin, "args", args);
+
+            return true;
+        }*/
+
+        sender.sendMessage(colour("&4Invalid Arguments > &c/blockstore <check:info:reload>"));
         return true;
     }
     
-    public static String translate(String str) {
+    public static String colour(String str) {
         return ChatColor.translateAlternateColorCodes('&', str);
     }
     

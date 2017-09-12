@@ -1,5 +1,8 @@
 package net.sothatsit.blockstore.chunkstore;
 
+import com.google.common.collect.ImmutableMap;
+import net.sothatsit.blockstore.util.Checks;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -7,90 +10,120 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class BlockMeta {
 
-    private int blockIndex;
-    private Map<Integer, Map<Integer, Object>> metadata;
-    
-    public BlockMeta(int blockIndex) {
-        this.blockIndex = blockIndex;
-        this.metadata = new HashMap<>();
+    private final Map<MetaKey, Object> metadata = new ConcurrentHashMap<>();
+
+    public boolean containsPlugin(int plugin) {
+        return metadata.keySet().stream().anyMatch(key -> key.plugin == plugin);
     }
 
-    public int getBlockIndex() {
-        return blockIndex;
+    public boolean containsValue(int plugin, int key) {
+        return metadata.containsKey(new MetaKey(plugin, key));
+    }
+
+    public Object getValue(int plugin, int key) {
+        return metadata.get(new MetaKey(plugin, key));
+    }
+
+    public Map<Integer, Object> getAllValues(int plugin) {
+        ImmutableMap.Builder<Integer, Object> values = ImmutableMap.builder();
+
+        metadata.entrySet().stream()
+                .filter(entry -> entry.getKey().plugin == plugin)
+                .forEach(entry -> values.put(entry.getKey().key, entry.getValue()));
+
+        return values.build();
+    }
+
+    public Map<Integer, Map<Integer, Object>> getAllValues() {
+        Map<Integer, ImmutableMap.Builder<Integer, Object>> builders = new HashMap<>();
+
+        metadata.forEach((jointKey, value) -> {
+            int plugin = jointKey.plugin;
+            int key = jointKey.key;
+
+            ImmutableMap.Builder<Integer, Object> builder = builders.get(plugin);
+
+            if(builder == null) {
+                builder = ImmutableMap.builder();
+                builders.put(plugin, builder);
+            }
+
+            builder.put(key, value);
+        });
+
+        ImmutableMap.Builder<Integer, Map<Integer, Object>> values = ImmutableMap.builder();
+
+        builders.forEach((plugin, valuesBuilder) -> values.put(plugin, valuesBuilder.build()));
+
+        return values.build();
+    }
+
+    public Set<Integer> getPlugins() {
+        return metadata.keySet().stream().map(key -> key.plugin).collect(Collectors.toSet());
+    }
+
+    public void setValue(int plugin, int key, Object value) {
+        Checks.ensureNonNull(value, "value");
+
+        metadata.put(new MetaKey(plugin, key), value);
     }
     
-    private Map<Integer, Object> getMap(int plugin) {
-        Map<Integer, Object> map = metadata.get(plugin);
-        
-        if (map == null) {
-            map = new HashMap<>();
-            metadata.put(plugin, map);
-        }
-        
-        return map;
+    public Object removeValue(int plugin, int key) {
+        return metadata.remove(new MetaKey(plugin, key));
     }
-    
+
     public void read(ObjectInputStream stream, int plugin) throws IOException, ClassNotFoundException {
         int amount = stream.readInt();
-        
+
         for (int i = 0; i < amount; i++) {
             int key = stream.readInt();
             Object value = stream.readObject();
-            
-            getMap(plugin).put(key, value);
+
+            setValue(plugin, key, value);
         }
     }
-    
+
     public void write(ObjectOutputStream stream, int plugin) throws IOException {
-        Map<Integer, Object> map = getMap(plugin);
+        Map<Integer, Object> map = getAllValues(plugin);
 
         stream.writeInt(map.size());
-        
+
         for (Entry<Integer, Object> entry : map.entrySet()) {
             stream.writeInt(entry.getKey());
             stream.writeObject(entry.getValue());
         }
     }
-    
-    public boolean containsPlugin(int plugin) {
-        return metadata.containsKey(plugin);
-    }
-    
-    public Set<Integer> getKeys() {
-        return metadata.keySet();
-    }
-    
-    public Map<Integer, Map<Integer, Object>> getRaw() {
-        return metadata;
-    }
-    
-    public void set(int plugin, int key, Object value) {
-        if (value == null) {
-            remove(plugin, key);
-        } else {
-            getMap(plugin).put(key, value);
+
+    private final static class MetaKey {
+
+        private final int plugin;
+        private final int key;
+
+        public MetaKey(int plugin, int key) {
+            this.plugin = plugin;
+            this.key = key;
         }
-    }
-    
-    public void remove(int plugin, int key) {
-        Map<Integer, Object> map = getMap(plugin);
-        
-        map.remove(key);
-        
-        if (map.size() == 0) {
-            metadata.remove(plugin);
+
+        @Override
+        public int hashCode() {
+            return Integer.hashCode(plugin) ^ Integer.hashCode(key);
         }
-    }
-    
-    public Object get(int plugin, int key) {
-        return (contains(plugin, key) ? getMap(plugin).get(key) : null);
-    }
-    
-    public boolean contains(int plugin, int key) {
-        return metadata.containsKey(plugin) && metadata.get(plugin).containsKey(key);
+
+        @Override
+        public boolean equals(Object obj) {
+            if(!(obj instanceof MetaKey))
+                return false;
+
+            MetaKey other = (MetaKey) obj;
+
+            return other.plugin == plugin && other.key == key;
+        }
+
     }
     
 }

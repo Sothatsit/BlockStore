@@ -1,3 +1,11 @@
+Version 1.4
++ Added the methods 'all', 'close' and 'none' for pre-loading chunks
++ Added option to set how long after its last use a chunk should be unloaded
++ Added the /blockstore reload command to reload the config
++ Added non-blocking methods to the API
++ When a block is pushed by a piston, the pushed blocks metadata is maintained
+* Allow storing boolean metadata values
+
 Version 1.3
 * Improve efficiency
 * Improve concurrency
