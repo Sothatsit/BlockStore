@@ -136,7 +136,7 @@ public class BlockStore extends JavaPlugin implements Listener {
         byWorld.forEach((world, blocks) -> {
             ChunkManager manager = getManager(world);
 
-            manager.moveBlocks(blocks, direction);
+            manager.moveBlocksAsync(blocks, direction);
         });
 
         Block pistonArm = event.getBlock().getRelative(direction);
@@ -168,7 +168,7 @@ public class BlockStore extends JavaPlugin implements Listener {
         byWorld.forEach((world, blocks) -> {
             ChunkManager manager = getManager(world);
 
-            manager.moveBlocks(blocks, direction.getOppositeFace());
+            manager.moveBlocksAsync(blocks, direction.getOppositeFace());
         });
     }
     

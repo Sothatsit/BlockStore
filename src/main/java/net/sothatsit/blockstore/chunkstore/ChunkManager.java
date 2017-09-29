@@ -173,15 +173,17 @@ public class ChunkManager {
         }
     }
 
-    public void moveBlocks(Collection<Block> blocks, BlockFace direction) {
+    public void moveBlocksAsync(Collection<Block> blocks, BlockFace direction) {
         Set<BlockLoc> blockLocs = blocks.stream()
                 .map(BlockLoc::fromBlock)
                 .collect(Collectors.toSet());
 
-        moveBlockLocs(blockLocs, direction);
+        Bukkit.getScheduler().runTaskAsynchronously(BlockStore.getInstance(), () -> {
+            moveBlocks(blockLocs, direction);
+        });
     }
 
-    public void moveBlockLocs(Collection<BlockLoc> blocks, BlockFace direction) {
+    public void moveBlocks(Collection<BlockLoc> blocks, BlockFace direction) {
         Map<BlockLoc, BlockMeta> newStates = new HashMap<>();
 
         for(BlockLoc location : blocks) {
