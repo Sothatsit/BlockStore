@@ -72,7 +72,7 @@ public class BlockStoreCommand implements CommandExecutor {
                 return true;
             }
 
-            BlockStoreApi.retrieveIsPlaced(block, isPlaced -> {
+            BlockStoreApi.retrieveIsPlaced(BlockStore.getInstance(), block, isPlaced -> {
                 sender.sendMessage(colour("&7Your target block is " + (isPlaced ? "&aPlaced" : "&cNatural")));
 
                 Map<String, Map<String, Object>> metadata = BlockStoreApi.getAllBlockMeta(block);

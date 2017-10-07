@@ -1,8 +1,6 @@
 package net.sothatsit.blockstore;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 
 import net.sothatsit.blockstore.chunkstore.*;
@@ -49,9 +47,9 @@ public class BlockStoreApi {
         return getChunkManager(location).getNameStore();
     }
 
-    private static void retrieveChunkStore(Location location, Consumer<ChunkStore> consumer) {
+    private static void retrieveChunkStore(Plugin callingPlugin, Location location, Consumer<ChunkStore> consumer) {
         getChunkManager(location).retrieveChunkStore(location, store -> {
-            Bukkit.getScheduler().runTask(BlockStore.getInstance(), () -> {
+            Bukkit.getScheduler().runTask(callingPlugin, () -> {
                 consumer.accept(store);
             });
         });
@@ -79,12 +77,64 @@ public class BlockStoreApi {
         return getChunkStore(location).isPlaced(location);
     }
 
-    public static void retrieveIsPlaced(Block block, Consumer<Boolean> consumer) {
-        retrieveIsPlaced(block.getLocation(), consumer);
+    private static boolean areClassNamesSimilar(String s1, String s2) {
+        int dotsSeen = 0;
+        int minLength = Math.min(s1.length(), s2.length());
+
+        for(int index = 0; index < minLength; ++index) {
+            if(s1.charAt(index) != s2.charAt(index))
+                return false;
+
+            if(s1.charAt(index) == '.' && (++dotsSeen) >= 3)
+                return true;
+        }
+
+        return false;
     }
 
+    private static Plugin guessCallingPlugin() {
+        for(StackTraceElement element : new Exception().getStackTrace()) {
+            String className = element.getClassName();
+
+            if(className.equals("net.sothatsit.blockstore.BlockStoreApi"))
+                continue;
+
+            if(className.startsWith("org.bukkit."))
+                continue;
+
+            if(className.startsWith("net.minecraft.server."))
+                continue;
+
+            if(className.startsWith("java.") || className.startsWith("sun."))
+                continue;
+
+            for(Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+                String pluginClassName = plugin.getClass().getName();
+
+                if(areClassNamesSimilar(className, pluginClassName))
+                    return plugin;
+            }
+        }
+
+        return BlockStore.getInstance();
+    }
+
+    @Deprecated
+    public static void retrieveIsPlaced(Block block, Consumer<Boolean> consumer) {
+        retrieveIsPlaced(guessCallingPlugin(), block, consumer);
+    }
+
+    @Deprecated
     public static void retrieveIsPlaced(Location location, Consumer<Boolean> consumer) {
-        retrieveChunkStore(location, chunkStore -> {
+        retrieveIsPlaced(guessCallingPlugin(), location, consumer);
+    }
+
+    public static void retrieveIsPlaced(Plugin callingPlugin, Block block, Consumer<Boolean> consumer) {
+        retrieveIsPlaced(callingPlugin, block.getLocation(), consumer);
+    }
+
+    public static void retrieveIsPlaced(Plugin callingPlugin, Location location, Consumer<Boolean> consumer) {
+        retrieveChunkStore(callingPlugin, location, chunkStore -> {
             consumer.accept(isPlaced(location));
         });
     }
@@ -110,12 +160,26 @@ public class BlockStoreApi {
         return getChunkStore(location).getMetaValue(location, pluginId, keyId);
     }
 
+    @Deprecated
     public static void retrieveBlockMeta(Block block, Plugin plugin, String key, Consumer<Object> consumer) {
-        retrieveBlockMeta(block.getLocation(), plugin, key, consumer);
+        retrieveBlockMeta(guessCallingPlugin(), block.getLocation(), plugin, key, consumer);
     }
 
+    @Deprecated
     public static void retrieveBlockMeta(Location location, Plugin plugin, String key, Consumer<Object> consumer) {
-        retrieveChunkStore(location, store -> {
+        retrieveBlockMeta(guessCallingPlugin(), location, plugin, key, consumer);
+    }
+
+    public static void retrieveBlockMeta(Plugin callingPlugin, Block block, Plugin plugin, String key,
+                                         Consumer<Object> consumer) {
+
+        retrieveBlockMeta(callingPlugin, block.getLocation(), plugin, key, consumer);
+    }
+
+    public static void retrieveBlockMeta(Plugin callingPlugin, Location location, Plugin plugin, String key,
+                                         Consumer<Object> consumer) {
+
+        retrieveChunkStore(callingPlugin, location, store -> {
             consumer.accept(getBlockMeta(location, plugin, key));
         });
     }
@@ -134,12 +198,26 @@ public class BlockStoreApi {
         return names.keysFromId(metaValues);
     }
 
+    @Deprecated
     public static void retrieveAllBlockMeta(Block block, Plugin plugin, Consumer<Map<String, Object>> consumer) {
-        retrieveAllBlockMeta(block.getLocation(), plugin, consumer);
+        retrieveAllBlockMeta(guessCallingPlugin(), block.getLocation(), plugin, consumer);
     }
 
+    @Deprecated
     public static void retrieveAllBlockMeta(Location location, Plugin plugin, Consumer<Map<String, Object>> consumer) {
-        retrieveChunkStore(location, store -> {
+        retrieveAllBlockMeta(guessCallingPlugin(), location, plugin, consumer);
+    }
+
+    public static void retrieveAllBlockMeta(Plugin callingPlugin, Block block, Plugin plugin,
+                                            Consumer<Map<String, Object>> consumer) {
+
+        retrieveAllBlockMeta(callingPlugin, block.getLocation(), plugin, consumer);
+    }
+
+    public static void retrieveAllBlockMeta(Plugin callingPlugin, Location location, Plugin plugin,
+                                            Consumer<Map<String, Object>> consumer) {
+
+        retrieveChunkStore(callingPlugin, location, store -> {
             consumer.accept(getAllBlockMeta(location, plugin));
         });
     }
@@ -156,12 +234,26 @@ public class BlockStoreApi {
         return names.deepKeysFromId(metaValues);
     }
 
+    @Deprecated
     public static void retrieveAllBlockMeta(Block block, Consumer<Map<String, Map<String, Object>>> consumer) {
-        retrieveAllBlockMeta(block.getLocation(), consumer);
+        retrieveAllBlockMeta(guessCallingPlugin(), block, consumer);
     }
 
+    @Deprecated
     public static void retrieveAllBlockMeta(Location location, Consumer<Map<String, Map<String, Object>>> consumer) {
-        retrieveChunkStore(location, store -> {
+        retrieveAllBlockMeta(guessCallingPlugin(), location, consumer);
+    }
+
+    public static void retrieveAllBlockMeta(Plugin callingPlugin, Block block,
+                                            Consumer<Map<String, Map<String, Object>>> consumer) {
+
+        retrieveAllBlockMeta(callingPlugin, block.getLocation(), consumer);
+    }
+
+    public static void retrieveAllBlockMeta(Plugin callingPlugin, Location location,
+                                            Consumer<Map<String, Map<String, Object>>> consumer) {
+
+        retrieveChunkStore(callingPlugin, location, store -> {
             consumer.accept(getAllBlockMeta(location));
         });
     }
@@ -174,12 +266,26 @@ public class BlockStoreApi {
         return getBlockMeta(location, plugin, key) != null;
     }
 
+    @Deprecated
     public static void retrieveContainsBlockMeta(Block block, Plugin plugin, String key, Consumer<Boolean> consumer) {
-        retrieveContainsBlockMeta(block.getLocation(), plugin, key, consumer);
+        retrieveContainsBlockMeta(guessCallingPlugin(), block.getLocation(), plugin, key, consumer);
     }
 
+    @Deprecated
     public static void retrieveContainsBlockMeta(Location location, Plugin plugin, String key, Consumer<Boolean> consumer) {
-        retrieveBlockMeta(location, plugin, key, blockMeta -> {
+        retrieveContainsBlockMeta(guessCallingPlugin(), location, plugin, key, consumer);
+    }
+
+    public static void retrieveContainsBlockMeta(Plugin callingPlugin, Block block, Plugin plugin, String key,
+                                                 Consumer<Boolean> consumer) {
+
+        retrieveContainsBlockMeta(callingPlugin, block.getLocation(), plugin, key, consumer);
+    }
+
+    public static void retrieveContainsBlockMeta(Plugin callingPlugin, Location location, Plugin plugin, String key,
+                                                 Consumer<Boolean> consumer) {
+
+        retrieveBlockMeta(callingPlugin, location, plugin, key, blockMeta -> {
             consumer.accept(containsBlockMeta(location, plugin, key));
         });
     }

@@ -14,11 +14,15 @@ import org.bukkit.block.BlockFace;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.zip.*;
 
 public class ChunkManager {
+
+    private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     private final World world;
     private final NameStore nameStore;
@@ -178,7 +182,7 @@ public class ChunkManager {
                 .map(BlockLoc::fromBlock)
                 .collect(Collectors.toSet());
 
-        Bukkit.getScheduler().runTaskAsynchronously(BlockStore.getInstance(), () -> {
+        executor.execute(() -> {
             moveBlocks(blockLocs, direction);
         });
     }
@@ -246,7 +250,7 @@ public class ChunkManager {
 
         LoadingChunkStore loadingChunkStore = new LoadingChunkStore(world, chunkLoc);
 
-        Bukkit.getScheduler().runTaskAsynchronously(BlockStore.getInstance(), () -> {
+        executor.execute(() -> {
             loadingChunkStore.setDelegate(loadStoreSync(chunkLoc));
         });
 
