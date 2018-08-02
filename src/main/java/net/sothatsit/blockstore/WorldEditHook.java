@@ -30,7 +30,7 @@ public class WorldEditHook {
         event.setExtent(new AbstractLoggingExtent(event.getExtent()) {
             @Override
             protected void onBlockChange(Vector pos, BaseBlock newBlock) {
-                BlockLoc blockLoc = BlockLoc.fromLocation(pos.getX(), pos.getY(), pos.getZ());
+                BlockLoc blockLoc = BlockLoc.fromLocation(pos.getBlockX(), pos.getBlockY(), pos.getBlockZ());
 
                 ChunkStore store = manager.getChunkStore(blockLoc.chunkLoc, true);
 

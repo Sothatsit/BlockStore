@@ -147,7 +147,7 @@ public class ChunkManager {
 
     public ChunkStore getChunkStore(ChunkLoc chunkLoc, boolean load) {
         if(!chunkLoc.exists(world))
-            return null;
+            throw new IllegalArgumentException("chunkLoc " + chunkLoc + " does not exist in this world");
 
         if(!load)
             return storeMap.get(chunkLoc);
