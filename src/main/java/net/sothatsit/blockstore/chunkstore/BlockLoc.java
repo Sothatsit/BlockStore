@@ -66,10 +66,10 @@ public final class BlockLoc {
     @Override
     public String toString() {
         return "{chunkLoc: " + chunkLoc
-                + ", relx: " + relx
-                + ", rely: " + rely
-                + ", relz: " + relz
-                + ", blockIndex: " + blockIndex + "}";
+                       + ", relx: " + relx
+                       + ", rely: " + rely
+                       + ", relz: " + relz
+                       + ", blockIndex: " + blockIndex + "}";
     }
 
     public static int calcBlockIndex(int relx, int rely, int relz) {
@@ -85,15 +85,15 @@ public final class BlockLoc {
     }
 
     public static BlockLoc fromLocation(Location location) {
-        return fromLocation(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        return fromLocation(location.getX(), location.getY(), location.getZ());
     }
 
-    public static BlockLoc fromLocation(int x, int y, int z) {
+    public static BlockLoc fromLocation(double x, double y, double z) {
         ChunkLoc chunkLoc = ChunkLoc.fromLocation(x, y, z);
 
-        int relx = x - chunkLoc.getBlockX();
-        int rely = y - chunkLoc.getBlockY();
-        int relz = z - chunkLoc.getBlockZ();
+        int relx = (int) x - chunkLoc.getBlockX();
+        int rely = (int) y - chunkLoc.getBlockY();
+        int relz = (int) z - chunkLoc.getBlockZ();
 
         return new BlockLoc(chunkLoc, relx, rely, relz);
     }

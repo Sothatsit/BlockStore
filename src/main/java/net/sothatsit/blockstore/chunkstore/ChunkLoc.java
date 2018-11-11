@@ -52,11 +52,15 @@ public final class ChunkLoc {
     }
 
     public static ChunkLoc fromLocation(Location location) {
-        return fromLocation(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        return fromLocation(location.getX(), location.getY(), location.getZ());
     }
 
-    public static ChunkLoc fromLocation(int x, int y, int z) {
-        return new ChunkLoc(x / 16, y / 64, z / 16);
+    public static ChunkLoc fromLocation(double x, double y, double z) {
+        int cx = (int) Math.floor(x / 16d);
+        int cy = (int) Math.floor(y / 64d);
+        int cz = (int) Math.floor(z / 16d);
+
+        return new ChunkLoc(cx, cy, cz);
     }
 
 }
