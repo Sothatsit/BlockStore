@@ -1,8 +1,8 @@
 package net.sothatsit.blockstore.chunkstore;
 
+import com.google.common.base.Preconditions;
 import net.sothatsit.blockstore.BlockStore;
 import net.sothatsit.blockstore.BlockStoreConfig;
-import net.sothatsit.blockstore.util.Checks;
 import net.sothatsit.blockstore.PreloadStrategy;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -246,7 +246,7 @@ public class ChunkManager {
     }
 
     public LoadingChunkStore loadStore(ChunkLoc chunkLoc) {
-        Checks.ensureTrue(chunkLoc.exists(world), "chunkLoc does not exist in this world");
+        Preconditions.checkArgument(chunkLoc.exists(world), "chunkLoc does not exist in this world");
 
         LoadingChunkStore loadingChunkStore = new LoadingChunkStore(world, chunkLoc);
 
@@ -258,7 +258,7 @@ public class ChunkManager {
     }
 
     public LoadedChunkStore loadStoreSync(ChunkLoc chunkLoc) {
-        Checks.ensureTrue(chunkLoc.exists(world), "chunkLoc does not exist in this world");
+        Preconditions.checkArgument(chunkLoc.exists(world), "chunkLoc does not exist in this world");
 
         File legacyFile = getLegacyStoreFile(chunkLoc);
         File file = getStoreFile(chunkLoc);

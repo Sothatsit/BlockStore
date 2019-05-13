@@ -1,7 +1,7 @@
 package net.sothatsit.blockstore.chunkstore;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import net.sothatsit.blockstore.util.Checks;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -68,7 +68,7 @@ public class BlockMeta {
     }
 
     public void setValue(int plugin, int key, Object value) {
-        Checks.ensureNonNull(value, "value");
+        Preconditions.checkNotNull(value, "value cannot be null");
 
         metadata.put(new MetaKey(plugin, key), value);
     }

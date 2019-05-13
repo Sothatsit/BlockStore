@@ -1,7 +1,7 @@
 package net.sothatsit.blockstore.chunkstore;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import net.sothatsit.blockstore.util.Checks;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -24,7 +24,7 @@ public class NameStore {
     private final Map<String, Integer> ids = new ConcurrentHashMap<>();
 
     public int toId(String name, boolean create) {
-        Checks.ensureNonNull(name, "name");
+        Preconditions.checkNotNull(name, "name cannot be null");
 
         try {
             readLock.lock();
@@ -56,8 +56,8 @@ public class NameStore {
     }
     
     public String fromId(int id) {
-        Checks.ensureTrue(id >= 0, "Invalid id " + id + ", valid ids are >= 0");
-        Checks.ensureTrue(id < names.size(), "Invalid id " + id + ", outside of the range of known ids");
+        Preconditions.checkArgument(id >= 0, "Invalid id " + id + ", valid ids are >= 0");
+        Preconditions.checkArgument(id < names.size(), "Invalid id " + id + ", outside of the range of known ids");
 
         try {
             readLock.lock();
@@ -69,7 +69,7 @@ public class NameStore {
     }
 
     public Map<String, Object> keysFromId(Map<Integer, Object> values) {
-        Checks.ensureNonNull(values, "values");
+        Preconditions.checkNotNull(values, "values cannot be null");
 
         ImmutableMap.Builder<String, Object> builder = ImmutableMap.builder();
 
@@ -83,7 +83,7 @@ public class NameStore {
     }
 
     public Map<String, Map<String, Object>> deepKeysFromId(Map<Integer, Map<Integer, Object>> values) {
-        Checks.ensureNonNull(values, "values");
+        Preconditions.checkNotNull(values, "values cannot be null");
 
         ImmutableMap.Builder<String, Map<String, Object>> builder = ImmutableMap.builder();
 
@@ -98,7 +98,7 @@ public class NameStore {
     }
 
     public void write(ObjectOutputStream stream) throws IOException {
-        Checks.ensureNonNull(stream, "stream");
+        Preconditions.checkNotNull(stream, "stream cannot be null");
 
         try {
             readLock.lock();
@@ -114,7 +114,7 @@ public class NameStore {
     }
     
     public void read(ObjectInputStream stream) throws IOException {
-        Checks.ensureNonNull(stream, "stream");
+        Preconditions.checkNotNull(stream, "stream cannot be null");
 
         try {
             writeLock.lock();

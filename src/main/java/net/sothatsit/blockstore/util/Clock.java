@@ -1,5 +1,7 @@
 package net.sothatsit.blockstore.util;
 
+import com.google.common.base.Preconditions;
+
 import java.text.DecimalFormat;
 
 public final class Clock {
@@ -21,7 +23,7 @@ public final class Clock {
     }
 
     public String stop() {
-        Checks.ensureTrue(!hasEnded(), "Timer has already been stopped.");
+        Preconditions.checkArgument(!hasEnded(), "Timer has already been stopped.");
 
         this.end = System.nanoTime();
 

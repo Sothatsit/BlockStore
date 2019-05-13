@@ -1,6 +1,6 @@
 package net.sothatsit.blockstore.chunkstore;
 
-import net.sothatsit.blockstore.util.Checks;
+import com.google.common.base.Preconditions;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -17,8 +17,8 @@ public abstract class ChunkStore {
     private AtomicLong lastUse;
 
     public ChunkStore(World world, ChunkLoc chunkLoc) {
-        Checks.ensureNonNull(world, "world");
-        Checks.ensureNonNull(chunkLoc, "chunkLoc");
+        Preconditions.checkNotNull(world, "world cannot be null");
+        Preconditions.checkNotNull(chunkLoc, "chunkLoc cannot be null");
 
         this.world = world;
         this.chunkLoc = chunkLoc;

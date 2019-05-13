@@ -1,6 +1,6 @@
 package net.sothatsit.blockstore.chunkstore;
 
-import net.sothatsit.blockstore.util.Checks;
+import com.google.common.base.Preconditions;
 import org.bukkit.World;
 
 import java.io.IOException;
@@ -42,7 +42,7 @@ public class LoadingChunkStore extends ChunkStore {
     }
 
     public void onLoad(Consumer<ChunkStore> consumer) {
-        Checks.ensureNonNull(consumer, "consumer");
+        Preconditions.checkNotNull(consumer, "consumer cannot be null");
 
         boolean run;
 
@@ -64,10 +64,10 @@ public class LoadingChunkStore extends ChunkStore {
     }
 
     protected void setDelegate(ChunkStore delegate) {
-        Checks.ensureNonNull(delegate, "delegate");
-        Checks.ensureTrue(!hasLoaded(), "Already has a delegate");
-        Checks.ensureTrue(getWorld() == delegate.getWorld(), "Must be in the same world");
-        Checks.ensureTrue(getChunkLoc().equals(delegate.getChunkLoc()), "Must be the same chunk");
+        Preconditions.checkNotNull(delegate, "delegate cannot be null");
+        Preconditions.checkArgument(!hasLoaded(), "Already has a delegate");
+        Preconditions.checkArgument(getWorld() == delegate.getWorld(), "Must be in the same world");
+        Preconditions.checkArgument(getChunkLoc().equals(delegate.getChunkLoc()), "Must be the same chunk");
 
         List<Action> pendingActions;
         List<Consumer<ChunkStore>> onLoad;
@@ -136,7 +136,7 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     public boolean isPlaced(BlockLoc location) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
 
         await();
 
@@ -145,7 +145,7 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     public void setPlaced(BlockLoc location, boolean value) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
 
         setLastUse();
 
@@ -154,7 +154,7 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     public Object getMetaValue(BlockLoc location, int plugin, int key) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
 
         await();
 
@@ -163,7 +163,7 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     public Map<Integer, Object> getMetaValues(BlockLoc location, int plugin) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
 
         await();
 
@@ -172,7 +172,7 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     public Map<Integer, Map<Integer, Object>> getMetaValues(BlockLoc location) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
 
         await();
 
@@ -181,7 +181,7 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     public void setMetaValue(BlockLoc location, int plugin, int key, Object value) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
 
         setLastUse();
 
@@ -190,7 +190,7 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     public void removeMetaValue(BlockLoc location, int plugin, int key) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
 
         setLastUse();
 
@@ -199,7 +199,7 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     protected BlockMeta getBlockState(BlockLoc location) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
 
         await();
 
@@ -208,8 +208,8 @@ public class LoadingChunkStore extends ChunkStore {
 
     @Override
     protected void setBlockState(BlockLoc location, BlockMeta meta) {
-        Checks.ensureTrue(isInChunk(location), "location is not in this chunk");
-        Checks.ensureNonNull(meta, "meta");
+        Preconditions.checkArgument(isInChunk(location), "location is not in this chunk");
+        Preconditions.checkNotNull(meta, "meta cannot be null");
 
         setLastUse();
 

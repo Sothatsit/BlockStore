@@ -1,10 +1,10 @@
 package net.sothatsit.blockstore;
 
+import com.google.common.base.Preconditions;
 import java.util.*;
 import java.util.function.Consumer;
 
 import net.sothatsit.blockstore.chunkstore.*;
-import net.sothatsit.blockstore.util.Checks;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -72,7 +72,7 @@ public class BlockStoreApi {
     public static boolean isPlaced(Block block) {
         return isPlaced(block.getLocation());
     }
-    
+
     public static boolean isPlaced(Location location) {
         return getChunkStore(location).isPlaced(location);
     }
@@ -142,7 +142,7 @@ public class BlockStoreApi {
     public static void setPlaced(Block block, boolean placed) {
         setPlaced(block.getLocation(), placed);
     }
-    
+
     public static void setPlaced(Location location, boolean placed) {
         getChunkStore(location).setPlaced(location, placed);
     }
@@ -150,7 +150,7 @@ public class BlockStoreApi {
     public static Object getBlockMeta(Block block, Plugin plugin, String key) {
         return getBlockMeta(block.getLocation(), plugin, key);
     }
-    
+
     public static Object getBlockMeta(Location location, Plugin plugin, String key) {
         NameStore names = getNameStore(location);
 
@@ -261,7 +261,7 @@ public class BlockStoreApi {
     public static boolean containsBlockMeta(Block block, Plugin plugin, String key) {
         return containsBlockMeta(block.getLocation(), plugin, key);
     }
-    
+
     public static boolean containsBlockMeta(Location location, Plugin plugin, String key) {
         return getBlockMeta(location, plugin, key) != null;
     }
@@ -293,16 +293,16 @@ public class BlockStoreApi {
     public static void setBlockMeta(Block block, Plugin plugin, String key, Object value) {
         setBlockMeta(block.getLocation(), plugin, key, value);
     }
-    
+
     public static void setBlockMeta(Location location, Plugin plugin, String key, Object value) {
-        Checks.ensureNonNull(value, "value");
+        Preconditions.checkNotNull(value, "value cannot be null");
 
         Class<?> baseType = value.getClass();
         while (baseType.isArray()) {
             baseType = baseType.getComponentType();
         }
 
-        Checks.ensureTrue(classWhitelist.contains(baseType),
+        Preconditions.checkArgument(classWhitelist.contains(baseType),
                 "value must be a value or array of type String, boolean, byte, short, int, long, float or double");
 
         NameStore names = getNameStore(location);
@@ -316,7 +316,7 @@ public class BlockStoreApi {
     public static void removeBlockMeta(Block block, Plugin plugin, String key) {
         removeBlockMeta(block.getLocation(), plugin, key);
     }
-    
+
     public static void removeBlockMeta(Location location, Plugin plugin, String key) {
         NameStore names = getNameStore(location);
 
@@ -325,5 +325,5 @@ public class BlockStoreApi {
 
         getChunkStore(location).removeMetaValue(location, pluginId, keyId);
     }
-    
+
 }
