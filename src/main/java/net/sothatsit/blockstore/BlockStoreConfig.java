@@ -9,6 +9,7 @@ public class BlockStoreConfig {
 
     private PreloadStrategy preloadStrategy = PreloadStrategy.CLOSE;
     private double unloadTime = 60;
+    private boolean hookWorldEdit = true;
 
     public PreloadStrategy getPreloadStrategy() {
         return preloadStrategy;
@@ -20,6 +21,10 @@ public class BlockStoreConfig {
 
     public long getUnloadTimeMS() {
         return (long) (unloadTime * 1000);
+    }
+
+    public boolean hookWorldEdit() {
+        return hookWorldEdit;
     }
 
     public void reload() {
@@ -34,8 +39,8 @@ public class BlockStoreConfig {
 
         this.preloadStrategy = loadPreloadStrategy(config);
         this.preloadStrategy.initialise();
-
         this.unloadTime = loadUnloadTime(config);
+        this.hookWorldEdit = config.getBoolean("hook-world-edit", true);
 
         getLogger().info("Config reloaded.");
     }

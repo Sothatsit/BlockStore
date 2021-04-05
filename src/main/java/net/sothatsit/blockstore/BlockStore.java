@@ -36,7 +36,7 @@ public class BlockStore extends JavaPlugin implements Listener {
         
         getCommand("blockstore").setExecutor(new BlockStoreCommand());
         
-        if (Bukkit.getPluginManager().getPlugin("WorldEdit") != null) {
+        if (blockStoreConfig.hookWorldEdit() && Bukkit.getPluginManager().getPlugin("WorldEdit") != null) {
             Logger logger = getLogger();
             
             try {

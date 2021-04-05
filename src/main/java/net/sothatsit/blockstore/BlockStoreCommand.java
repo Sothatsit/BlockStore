@@ -19,6 +19,7 @@ public class BlockStoreCommand implements CommandExecutor {
 
     private static final Set<Material> transparentBlocks = new HashSet<Material>() {{
         add(Material.AIR);
+        add(Material.CAVE_AIR);
     }};
 
     @Override

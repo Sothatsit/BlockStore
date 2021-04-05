@@ -5,3 +5,7 @@ preload: 'Close'
 
 # The time in seconds to wait after a chunk store is used to unload it
 unload-time: 60
+
+# Whether to hook into WorldEdit to clear the state of block's changed using it.
+# The whole plugin must be reloaded for this option to take effect.
+hook-world-edit: true
